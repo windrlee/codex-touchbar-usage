@@ -1,0 +1,18 @@
+{
+  "type": "shellScriptTitledButton",
+  "refreshInterval": 60,
+  "source": {
+    "inline": "/usr/local/bin/codex-touchbar-usage 2>/dev/null || echo 'Codex RPC --'"
+  },
+  "width": 370,
+  "align": "left",
+  "bordered": false,
+  "actions": [
+    {
+      "trigger": "singleTap",
+      "action": "shellScript",
+      "executablePath": "/usr/bin/open",
+      "shellArguments": ["-a", "ChatGPT"]
+    }
+  ]
+}

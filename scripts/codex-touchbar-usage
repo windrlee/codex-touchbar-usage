@@ -1,0 +1,161 @@
+#!/usr/bin/env python3
+import json
+import selectors
+import subprocess
+import sys
+import time
+from datetime import datetime, timedelta
+
+
+CODEX_BIN = "/usr/local/bin/codex"
+
+
+def fmt_usage(value, width=10):
+    if value is None:
+        return "--"
+
+    percent = min(100.0, max(0.0, float(value)))
+    filled = int(percent * width / 100 + 0.5)
+    rail = "━" * filled + "─" * (width - filled)
+    return f"{percent:.0f}% {rail}"
+
+
+def fmt_reset(value):
+    if not value:
+        return "--"
+
+    reset_at = datetime.fromtimestamp(int(value))
+    now = datetime.now()
+    tomorrow = now.date() + timedelta(days=1)
+
+    if reset_at.date() == now.date():
+        return reset_at.strftime("%H:%M")
+    if reset_at.date() == tomorrow:
+        return "明" + reset_at.strftime("%H:%M")
+    return reset_at.strftime("%m/%d %H:%M")
+
+
+def fmt_title(weekly_usage, weekly_reset):
+    return f"1w {weekly_usage} ↻{weekly_reset}"
+
+
+def normalize_rpc_rate_limits(result):
+    if not result:
+        return None
+
+    by_id = result.get("rateLimitsByLimitId") or {}
+    snapshot = by_id.get("codex") or result.get("rateLimits") or {}
+    primary = snapshot.get("primary") or {}
+    if primary.get("usedPercent") is None and primary.get("resetsAt") is None:
+        return None
+
+    return {
+        "rate_limits": {
+            "primary": {
+                "used_percent": primary.get("usedPercent"),
+                "resets_at": primary.get("resetsAt"),
+            }
+        }
+    }
+
+
+def read_rpc_response(process, selector, request_id, timeout):
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        events = selector.select(timeout=0.1)
+        for key, _ in events:
+            line = key.fileobj.readline()
+            if not line:
+                continue
+            if key.fileobj is process.stderr:
+                continue
+            try:
+                obj = json.loads(line)
+            except Exception:
+                continue
+            if obj.get("id") == request_id:
+                return obj
+    return None
+
+
+def fetch_rate_limits_from_codex_rpc(timeout=3.0):
+    process = None
+    try:
+        process = subprocess.Popen(
+            [CODEX_BIN, "-s", "read-only", "-a", "untrusted", "app-server"],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            bufsize=1,
+        )
+        selector = selectors.DefaultSelector()
+        selector.register(process.stdout, selectors.EVENT_READ)
+        selector.register(process.stderr, selectors.EVENT_READ)
+
+        def send(request):
+            process.stdin.write(json.dumps(request, separators=(",", ":")) + "\n")
+            process.stdin.flush()
+
+        send(
+            {
+                "id": 1,
+                "method": "initialize",
+                "params": {
+                    "clientInfo": {
+                        "name": "codex-touchbar-usage",
+                        "version": "1",
+                    },
+                    "protocolVersion": 2,
+                },
+            }
+        )
+        if not read_rpc_response(process, selector, 1, timeout):
+            return None
+
+        send({"id": 2, "method": "account/rateLimits/read", "params": None})
+        response = read_rpc_response(process, selector, 2, timeout)
+        if not response or response.get("error"):
+            return None
+        return normalize_rpc_rate_limits(response.get("result"))
+    except Exception:
+        return None
+    finally:
+        if process:
+            try:
+                if process.stdin:
+                    process.stdin.close()
+            except Exception:
+                pass
+            try:
+                process.terminate()
+                process.wait(timeout=0.5)
+            except Exception:
+                try:
+                    process.kill()
+                except Exception:
+                    pass
+
+
+def main():
+    payload = fetch_rate_limits_from_codex_rpc()
+    if not payload:
+        print("Codex RPC --")
+        return 0
+
+    limits = payload.get("rate_limits") or {}
+    weekly = limits.get("primary") or {}
+
+    weekly_usage = fmt_usage(weekly.get("used_percent"))
+    weekly_reset = fmt_reset(weekly.get("resets_at"))
+
+    print(fmt_title(weekly_usage, weekly_reset))
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main())
+    except Exception:
+        print("Codex RPC --")
+        sys.exit(0)
