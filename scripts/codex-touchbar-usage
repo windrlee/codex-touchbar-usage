@@ -7,7 +7,7 @@ import time
 from datetime import datetime, timedelta
 
 
-CODEX_BIN = "/usr/local/bin/codex"
+CODEX_BIN = "/Applications/ChatGPT.app/Contents/Resources/codex"
 
 
 def fmt_usage(value, width=10):
@@ -113,6 +113,7 @@ def fetch_rate_limits_from_codex_rpc(timeout=3.0):
         if not read_rpc_response(process, selector, 1, timeout):
             return None
 
+        send({"method": "initialized", "params": {}})
         send({"id": 2, "method": "account/rateLimits/read", "params": None})
         response = read_rpc_response(process, selector, 2, timeout)
         if not response or response.get("error"):
