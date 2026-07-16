@@ -1,5 +1,7 @@
 # codex-touchbar-usage
 
+[中文文档](README.zh-CN.md)
+
 Show Codex weekly usage on the MacBook Touch Bar through MTMR.
 
 Example output:
