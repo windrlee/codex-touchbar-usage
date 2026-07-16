@@ -13,7 +13,9 @@ Example output:
 - Reads Codex account rate limits through `codex app-server`.
 - Shows weekly used percentage, a 10-segment progress rail, and reset time.
 - Refreshes from MTMR every 60 seconds.
-- Shows `Codex RPC --` when the Codex RPC call fails.
+- Saves the latest successful result under `~/Library/Caches/CodexTouchBar/usage.json`.
+- Shows cached data with a `⚠` marker and cache age when the RPC call fails.
+- Shows `Codex RPC --` only when the RPC fails and no cache is available.
 - Does not send a prompt or start a model run.
 
 ## Why App Server RPC
@@ -32,7 +34,7 @@ This project intentionally does not call `/status`. `/status` is an interactive 
 
 - macOS with Touch Bar
 - [MTMR](https://github.com/Toxblh/MTMR)
-- Codex CLI installed at `/usr/local/bin/codex`
+- ChatGPT.app with the bundled Codex binary
 - Logged in Codex account
 - Python 3
 
@@ -105,13 +107,27 @@ open /Applications/MTMR.app
 
 ## Failure Behavior
 
-If `codex app-server` is unavailable or the RPC call times out, the script prints:
+If `codex app-server` is unavailable or the RPC call times out, the script uses
+the last successful result and marks it as cached:
+
+```text
+⚠ 1w 25% ━━━─────── ↻07/20 09:49 ·2m
+```
+
+The cache is stored at:
+
+```text
+~/Library/Caches/CodexTouchBar/usage.json
+```
+
+If no successful result has ever been cached, the script prints:
 
 ```text
 Codex RPC --
 ```
 
-It does not fall back to local session logs. This avoids showing stale local-only snapshots.
+It does not fall back to local session logs. The cache is only used when the
+official RPC call fails, and the `⚠` marker prevents it from looking live.
 
 ## References
 

@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 import json
+import os
 import selectors
 import subprocess
 import sys
 import time
 from datetime import datetime, timedelta
+from pathlib import Path
 
 
 CODEX_BIN = "/Applications/ChatGPT.app/Contents/Resources/codex"
+CACHE_PATH = Path.home() / "Library/Caches/CodexTouchBar/usage.json"
 
 
 def fmt_usage(value, width=10):
@@ -35,8 +38,40 @@ def fmt_reset(value):
     return reset_at.strftime("%m/%d %H:%M")
 
 
-def fmt_title(weekly_usage, weekly_reset):
-    return f"1w {weekly_usage} ↻{weekly_reset}"
+def fmt_title(weekly_usage, weekly_reset, cached_age=None):
+    prefix = "⚠ " if cached_age is not None else ""
+    suffix = f" ·{format_cache_age(cached_age)}" if cached_age is not None else ""
+    return f"{prefix}1w {weekly_usage} ↻{weekly_reset}{suffix}"
+
+
+def format_cache_age(seconds):
+    minutes = max(0, int(seconds or 0) // 60)
+    return "<1m" if minutes == 0 else f"{minutes}m"
+
+
+def save_cached_payload(payload):
+    try:
+        CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        temp_path = CACHE_PATH.with_suffix(".tmp")
+        temp_path.write_text(
+            json.dumps({"saved_at": time.time(), "payload": payload}),
+            encoding="utf-8",
+        )
+        os.replace(temp_path, CACHE_PATH)
+    except Exception:
+        pass
+
+
+def load_cached_payload():
+    try:
+        cached = json.loads(CACHE_PATH.read_text(encoding="utf-8"))
+        saved_at = float(cached["saved_at"])
+        payload = cached["payload"]
+        if not isinstance(payload, dict):
+            return None
+        return payload, max(0, time.time() - saved_at)
+    except Exception:
+        return None
 
 
 def normalize_rpc_rate_limits(result):
@@ -141,6 +176,16 @@ def fetch_rate_limits_from_codex_rpc(timeout=3.0):
 def main():
     payload = fetch_rate_limits_from_codex_rpc()
     if not payload:
+        cached = load_cached_payload()
+        if not cached:
+            print("Codex RPC --")
+            return 0
+        payload, cached_age = cached
+    else:
+        save_cached_payload(payload)
+        cached_age = None
+
+    if not payload:
         print("Codex RPC --")
         return 0
 
@@ -150,7 +195,7 @@ def main():
     weekly_usage = fmt_usage(weekly.get("used_percent"))
     weekly_reset = fmt_reset(weekly.get("resets_at"))
 
-    print(fmt_title(weekly_usage, weekly_reset))
+    print(fmt_title(weekly_usage, weekly_reset, cached_age))
     return 0
 
 

@@ -42,6 +42,14 @@ class ProgressBarTest(unittest.TestCase):
             "1w 0% ────────── ↻07/20",
         )
 
+    def test_title_marks_cached_data_with_age(self):
+        usage = load_usage_module()
+
+        self.assertEqual(
+            usage.fmt_title("1% ──────────", "07/20", cached_age=125),
+            "⚠ 1w 1% ────────── ↻07/20 ·2m",
+        )
+
     def test_normalizes_codex_rpc_rate_limits(self):
         usage = load_usage_module()
 
@@ -88,13 +96,27 @@ class ProgressBarTest(unittest.TestCase):
     def test_main_shows_rpc_failure_without_local_log_fallback(self):
         usage = load_usage_module()
 
-        with mock.patch.object(usage, "fetch_rate_limits_from_codex_rpc", return_value=None):
+        with mock.patch.object(usage, "fetch_rate_limits_from_codex_rpc", return_value=None), \
+             mock.patch.object(usage, "load_cached_payload", return_value=None):
             output = io.StringIO()
             with redirect_stdout(output):
                 exit_code = usage.main()
 
         self.assertEqual(exit_code, 0)
         self.assertEqual(output.getvalue().strip(), "Codex RPC --")
+
+    def test_main_uses_cache_when_rpc_fails(self):
+        usage = load_usage_module()
+        payload = {"rate_limits": {"primary": {"used_percent": 1, "resets_at": 0}}}
+
+        with mock.patch.object(usage, "fetch_rate_limits_from_codex_rpc", return_value=None), \
+             mock.patch.object(usage, "load_cached_payload", return_value=(payload, 125)):
+            output = io.StringIO()
+            with redirect_stdout(output):
+                exit_code = usage.main()
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(output.getvalue().strip(), "⚠ 1w 1% ────────── ↻-- ·2m")
 
 
 if __name__ == "__main__":
