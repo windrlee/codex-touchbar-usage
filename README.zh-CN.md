@@ -64,7 +64,8 @@ cd codex-touchbar-usage
 ~/Library/Application Support/MTMR/items.json
 ```
 
-把 [examples/mtmr-item.json](examples/mtmr-item.json) 中的项目加入 `items.json`。该示例包含：
+运行 `./install.sh` 会自动安装脚本、图标，并把项目幂等合并到 `items.json`；已有配置会先生成带时间戳的备份。
+也可以手动把 [examples/mtmr-item.json](examples/mtmr-item.json) 中的项目加入 `items.json`。该示例包含：
 
 - 60 秒自动刷新。
 - 370 宽度的左对齐文本区域。

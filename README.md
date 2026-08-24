@@ -68,7 +68,9 @@ Open:
 ~/Library/Application Support/MTMR/items.json
 ```
 
-Add the item from:
+Run `./install.sh` to install the script, icon, and item automatically. The installer
+preserves the existing MTMR config, creates a timestamped backup, and is safe to run
+again. To only generate the example item manually, add the item from:
 
 ```text
 examples/mtmr-item.json
@@ -85,7 +87,10 @@ Minimal item:
   },
   "width": 370,
   "align": "left",
-  "bordered": false
+  "bordered": false,
+  "image": {
+    "filePath": "~/Library/Application Support/MTMR/codex-touchbar-icon.png"
+  }
 }
 ```
 

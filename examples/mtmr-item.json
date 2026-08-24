@@ -7,6 +7,9 @@
   "width": 370,
   "align": "left",
   "bordered": false,
+  "image": {
+    "filePath": "~/Library/Application Support/MTMR/codex-touchbar-icon.png"
+  },
   "actions": [
     {
       "trigger": "singleTap",
