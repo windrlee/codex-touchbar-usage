@@ -54,6 +54,13 @@ codex_item = {
     ],
 }
 
+esc_item = {
+    "type": "escape",
+    "width": 44,
+    "align": "left",
+    "bordered": True,
+}
+
 matches = [
     i for i, item in enumerate(items)
     if isinstance(item, dict)
@@ -66,6 +73,11 @@ if matches:
         del items[index]
 else:
     items.append(codex_item)
+
+for index, item in enumerate(items):
+    if isinstance(item, dict) and item.get("title") == "esc":
+        items[index] = esc_item
+        break
 
 items_path.parent.mkdir(parents=True, exist_ok=True)
 with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=items_path.parent,
