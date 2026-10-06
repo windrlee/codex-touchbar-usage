@@ -19,6 +19,29 @@ def load_usage_module():
 
 
 class ProgressBarTest(unittest.TestCase):
+    def test_resolves_configured_codex_binary(self):
+        usage = load_usage_module()
+
+        with mock.patch.dict(usage.os.environ, {"CODEX_BIN": "/tmp/custom-codex"}), \
+             mock.patch.object(usage.os.path, "isfile", return_value=True):
+            self.assertEqual(usage.resolve_codex_bin(), "/tmp/custom-codex")
+
+    def test_resolves_codex_from_path_before_legacy_bundle(self):
+        usage = load_usage_module()
+
+        with mock.patch.dict(usage.os.environ, {}, clear=False), \
+             mock.patch.object(usage.os, "environ", {}), \
+             mock.patch.object(usage.shutil, "which", return_value="/usr/local/bin/codex"):
+            self.assertEqual(usage.resolve_codex_bin(), "/usr/local/bin/codex")
+
+    def test_returns_none_when_no_codex_binary_exists(self):
+        usage = load_usage_module()
+
+        with mock.patch.object(usage.os, "environ", {}), \
+             mock.patch.object(usage.shutil, "which", return_value=None), \
+             mock.patch.object(usage.os.path, "isfile", return_value=False):
+            self.assertIsNone(usage.resolve_codex_bin())
+
     def test_renders_used_percent_as_ten_segment_line_rail(self):
         usage = load_usage_module()
 
