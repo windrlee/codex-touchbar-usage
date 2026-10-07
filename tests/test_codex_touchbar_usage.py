@@ -50,6 +50,14 @@ class ProgressBarTest(unittest.TestCase):
              mock.patch.object(usage.os.path, "isfile", side_effect=lambda path: path == "/usr/local/bin/codex"):
             self.assertEqual(usage.resolve_codex_bin(), "/usr/local/bin/codex")
 
+    def test_adds_codex_and_node_paths_to_process_environment(self):
+        usage = load_usage_module()
+
+        with mock.patch.object(usage.os, "environ", {"PATH": "/usr/bin:/bin"}):
+            env = usage.codex_process_env("/usr/local/bin/codex")
+
+        self.assertEqual(env["PATH"], "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin")
+
     def test_renders_used_percent_as_ten_segment_line_rail(self):
         usage = load_usage_module()
 

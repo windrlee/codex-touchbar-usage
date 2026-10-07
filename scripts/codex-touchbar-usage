@@ -35,6 +35,19 @@ def resolve_codex_bin():
     return None
 
 
+def codex_process_env(codex_bin):
+    """Give npm-installed Codex access to its Node interpreter under MTMR."""
+    env = os.environ.copy()
+    path_entries = [
+        str(Path(codex_bin).parent),
+        "/usr/local/bin",
+        "/opt/homebrew/bin",
+    ]
+    existing = env.get("PATH", "")
+    env["PATH"] = ":".join(dict.fromkeys(path_entries + existing.split(":")))
+    return env
+
+
 def fmt_usage(value, width=10):
     if value is None:
         return "--"
@@ -148,6 +161,7 @@ def fetch_rate_limits_from_codex_rpc(timeout=3.0):
             stderr=subprocess.PIPE,
             text=True,
             bufsize=1,
+            env=codex_process_env(codex_bin),
         )
         selector = selectors.DefaultSelector()
         selector.register(process.stdout, selectors.EVENT_READ)
