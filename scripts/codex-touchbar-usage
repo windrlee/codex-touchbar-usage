@@ -11,6 +11,8 @@ from pathlib import Path
 
 
 LEGACY_CODEX_PATHS = (
+    "/usr/local/bin/codex",
+    "/opt/homebrew/bin/codex",
     "/Applications/ChatGPT.app/Contents/Resources/codex",
     "/Applications/ChatGPT.app/Contents/Resources/bin/codex",
 )
